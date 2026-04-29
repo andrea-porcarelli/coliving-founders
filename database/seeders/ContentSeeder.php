@@ -11,11 +11,30 @@ class ContentSeeder extends Seeder
     public function run(): void
     {
         $this->seedPartners();
+        $this->seedNavigation();
         $this->seedHome();
         $this->seedPartnersPage();
         $this->seedCompanies();
         $this->seedAbout();
         $this->seedContact();
+    }
+
+    private function seedNavigation(): void
+    {
+        $items = [
+            ['label' => 'Home', 'href' => '/', 'sort_order' => 1],
+            ['label' => 'Coliving Partners', 'href' => '/coliving-partners', 'sort_order' => 2],
+            ['label' => 'For Companies', 'href' => '/for-companies', 'sort_order' => 3],
+            ['label' => 'About', 'href' => '/about', 'sort_order' => 4],
+            ['label' => 'Contact', 'href' => '/contact', 'sort_order' => 5],
+        ];
+
+        foreach ($items as $data) {
+            \App\Models\NavigationItem::updateOrCreate(
+                ['href' => $data['href']],
+                $data,
+            );
+        }
     }
 
     private function seedPartners(): void

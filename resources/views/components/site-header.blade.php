@@ -1,11 +1,5 @@
 @php
-    $nav = [
-        ['label' => 'Home', 'route' => 'home', 'href' => '/'],
-        ['label' => 'Coliving Partners', 'route' => 'partners', 'href' => '/coliving-partners'],
-        ['label' => 'For Companies', 'route' => 'companies', 'href' => '/for-companies'],
-        ['label' => 'About', 'route' => 'about', 'href' => '/about'],
-        ['label' => 'Contact', 'route' => 'contact', 'href' => '/contact'],
-    ];
+    $nav = \App\Models\NavigationItem::published()->get();
 @endphp
 
 <header
@@ -24,10 +18,11 @@
         <ul class="hidden lg:flex items-center gap-8">
             @foreach ($nav as $item)
                 <li>
-                    <a href="{{ $item['href'] }}"
+                    <a href="{{ $item->href }}"
+                       @if($item->open_in_new_tab) target="_blank" rel="noopener" @endif
                        class="text-sm font-medium text-ink/80 hover:text-brand-600 transition relative
-                              {{ request()->is(trim($item['href'], '/') ?: '/') ? 'text-brand-600' : '' }}">
-                        {{ $item['label'] }}
+                              {{ request()->is(trim($item->href, '/') ?: '/') ? 'text-brand-600' : '' }}">
+                        {{ $item->label }}
                     </a>
                 </li>
             @endforeach
@@ -56,7 +51,9 @@
         <ul class="px-4 py-4 space-y-2">
             @foreach ($nav as $item)
                 <li>
-                    <a href="{{ $item['href'] }}" class="block py-2 text-base font-medium text-ink/80 hover:text-brand-600">{{ $item['label'] }}</a>
+                    <a href="{{ $item->href }}"
+                       @if($item->open_in_new_tab) target="_blank" rel="noopener" @endif
+                       class="block py-2 text-base font-medium text-ink/80 hover:text-brand-600">{{ $item->label }}</a>
                 </li>
             @endforeach
             <li class="pt-2">

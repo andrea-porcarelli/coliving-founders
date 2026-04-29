@@ -2,8 +2,11 @@
 
 namespace App\Livewire;
 
+use App\Models\NavigationItem;
 use App\Models\Page;
+use App\Models\Partner;
 use App\Models\Section;
+use Illuminate\Support\Str;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 use Livewire\WithFileUploads;
@@ -27,6 +30,20 @@ class PageEditor extends Component
     public bool $editingSeo = false;
 
     public array $seoForm = [];
+
+    public bool $editingNav = false;
+
+    public array $navForm = [];
+
+    public array $navDeletedIds = [];
+
+    public bool $editingPartnersList = false;
+
+    public ?int $editingPartnerId = null;
+
+    public bool $partnerIsNew = false;
+
+    public array $partnerForm = [];
 
     public function mount(Page $page): void
     {
@@ -235,6 +252,215 @@ class PageEditor extends Component
         }
         [$items[$index], $items[$target]] = [$items[$target], $items[$index]];
         data_set($this->editingContent, $path, array_values($items));
+    }
+
+    public function startEditingPartners(): void
+    {
+        $this->editingPartnersList = true;
+        $this->editingPartnerId = null;
+        $this->partnerIsNew = false;
+    }
+
+    public function cancelEditingPartners(): void
+    {
+        $this->editingPartnersList = false;
+        $this->editingPartnerId = null;
+        $this->partnerIsNew = false;
+        $this->partnerForm = [];
+        $this->pendingImage = null;
+    }
+
+    public function editPartner(int $id): void
+    {
+        $partner = Partner::findOrFail($id);
+        $this->editingPartnerId = $partner->id;
+        $this->partnerIsNew = false;
+        $this->partnerForm = [
+            'name' => $partner->name,
+            'slug' => $partner->slug,
+            'location' => $partner->location,
+            'description' => $partner->description,
+            'website' => $partner->website ?: '',
+            'rooms' => $partner->rooms,
+            'published' => (bool) $partner->published,
+        ];
+        $this->pendingImage = null;
+    }
+
+    public function addNewPartner(): void
+    {
+        $this->editingPartnerId = null;
+        $this->partnerIsNew = true;
+        $this->partnerForm = [
+            'name' => '',
+            'slug' => '',
+            'location' => '',
+            'description' => '',
+            'website' => '',
+            'rooms' => null,
+            'published' => true,
+        ];
+        $this->pendingImage = null;
+    }
+
+    public function cancelPartnerForm(): void
+    {
+        $this->editingPartnerId = null;
+        $this->partnerIsNew = false;
+        $this->partnerForm = [];
+        $this->pendingImage = null;
+    }
+
+    public function savePartner(): void
+    {
+        $data = $this->validate([
+            'partnerForm.name' => 'required|string|max:160',
+            'partnerForm.slug' => 'nullable|string|max:160|alpha_dash',
+            'partnerForm.location' => 'required|string|max:160',
+            'partnerForm.description' => 'required|string|max:2000',
+            'partnerForm.website' => 'nullable|url|max:240',
+            'partnerForm.rooms' => 'nullable|integer|min:1|max:9999',
+            'partnerForm.published' => 'boolean',
+        ]);
+
+        $form = $data['partnerForm'];
+        $form['slug'] = $form['slug'] ?: Str::slug($form['name']);
+
+        if ($this->editingPartnerId) {
+            $partner = Partner::findOrFail($this->editingPartnerId);
+            $partner->update($form);
+        } else {
+            $form['sort_order'] = (Partner::max('sort_order') ?? 0) + 1;
+            $partner = Partner::create($form);
+            $this->editingPartnerId = $partner->id;
+            $this->partnerIsNew = false;
+        }
+
+        if ($this->pendingImage) {
+            $this->validate(['pendingImage' => 'image|max:5120']);
+            $partner->clearMediaCollection('logo');
+            $partner->addMedia($this->pendingImage->getRealPath())
+                ->usingFileName($this->pendingImage->getClientOriginalName())
+                ->toMediaCollection('logo');
+            $this->pendingImage = null;
+        }
+
+        $this->cancelPartnerForm();
+    }
+
+    public function removePartnerLogo(int $id): void
+    {
+        $partner = Partner::findOrFail($id);
+        $partner->clearMediaCollection('logo');
+    }
+
+    public function deletePartner(int $id): void
+    {
+        Partner::where('id', $id)->delete();
+        if ($this->editingPartnerId === $id) {
+            $this->cancelPartnerForm();
+        }
+    }
+
+    public function movePartner(int $id, string $direction): void
+    {
+        $partner = Partner::findOrFail($id);
+        $neighbor = Partner::when(
+            $direction === 'up',
+            fn ($q) => $q->where('sort_order', '<', $partner->sort_order)->orderByDesc('sort_order'),
+            fn ($q) => $q->where('sort_order', '>', $partner->sort_order)->orderBy('sort_order')
+        )->first();
+
+        if (! $neighbor) {
+            return;
+        }
+
+        [$a, $b] = [$partner->sort_order, $neighbor->sort_order];
+        $partner->update(['sort_order' => $b]);
+        $neighbor->update(['sort_order' => $a]);
+    }
+
+    public function startEditingNav(): void
+    {
+        $this->navForm = NavigationItem::orderBy('sort_order')->get()
+            ->map(fn ($i) => [
+                'id' => $i->id,
+                'label' => $i->label,
+                'href' => $i->href,
+                'published' => (bool) $i->published,
+                'open_in_new_tab' => (bool) $i->open_in_new_tab,
+            ])->all();
+        $this->navDeletedIds = [];
+        $this->editingNav = true;
+    }
+
+    public function cancelEditingNav(): void
+    {
+        $this->editingNav = false;
+        $this->navForm = [];
+        $this->navDeletedIds = [];
+    }
+
+    public function addNavItemRow(): void
+    {
+        $this->navForm[] = [
+            'id' => null,
+            'label' => 'New item',
+            'href' => '/',
+            'published' => true,
+            'open_in_new_tab' => false,
+        ];
+    }
+
+    public function removeNavItemRow(int $index): void
+    {
+        if (! array_key_exists($index, $this->navForm)) {
+            return;
+        }
+        $row = $this->navForm[$index];
+        if (! empty($row['id'])) {
+            $this->navDeletedIds[] = $row['id'];
+        }
+        array_splice($this->navForm, $index, 1);
+    }
+
+    public function moveNavItemRow(int $index, string $direction): void
+    {
+        $target = $direction === 'up' ? $index - 1 : $index + 1;
+        if (! array_key_exists($index, $this->navForm) || ! array_key_exists($target, $this->navForm)) {
+            return;
+        }
+        [$this->navForm[$index], $this->navForm[$target]] = [$this->navForm[$target], $this->navForm[$index]];
+        $this->navForm = array_values($this->navForm);
+    }
+
+    public function saveNav(): void
+    {
+        if (! empty($this->navDeletedIds)) {
+            NavigationItem::whereIn('id', $this->navDeletedIds)->delete();
+        }
+
+        foreach ($this->navForm as $i => $row) {
+            $payload = [
+                'label' => trim($row['label'] ?? ''),
+                'href' => trim($row['href'] ?? '/'),
+                'sort_order' => $i,
+                'published' => (bool) ($row['published'] ?? true),
+                'open_in_new_tab' => (bool) ($row['open_in_new_tab'] ?? false),
+            ];
+
+            if ($payload['label'] === '' || $payload['href'] === '') {
+                continue;
+            }
+
+            if (! empty($row['id'])) {
+                NavigationItem::where('id', $row['id'])->update($payload);
+            } else {
+                NavigationItem::create($payload);
+            }
+        }
+
+        $this->cancelEditingNav();
     }
 
     public function startEditingSeo(): void
