@@ -7,6 +7,11 @@ use App\Http\Controllers\Seo\LlmsController;
 use App\Http\Controllers\Seo\RobotsController;
 use App\Http\Controllers\Seo\SitemapController;
 use Illuminate\Support\Facades\Route;
+use Livewire\Mechanisms\FrontendAssets\FrontendAssets;
+use Livewire\Mechanisms\HandleRequests\HandleRequests;
+
+Route::post('/lw-update', [HandleRequests::class, 'handleUpdate'])->name('livewire.update');
+Route::get('/lw-script.js', [FrontendAssets::class, 'returnJavaScriptAsFile'])->name('livewire.javascript');
 
 Route::get('/sitemap.xml', SitemapController::class)->name('seo.sitemap');
 Route::get('/robots.txt', RobotsController::class)->name('seo.robots');
