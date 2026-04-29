@@ -35,6 +35,6 @@ class SubmissionReceived extends Mailable
 
     public function content(): Content
     {
-        return new Content(view: 'emails.submission-received');
+        return new Content(markdown: 'emails.submission-received');
     }
 }
