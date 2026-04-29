@@ -1,0 +1,39 @@
+@import 'tailwindcss';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+@source '../**/*.blade.php';
+@source '../**/*.js';
+
+@theme {
+    --font-display: 'Gasoek One', ui-sans-serif, system-ui, sans-serif;
+    --font-sans: 'Montserrat', ui-sans-serif, system-ui, sans-serif;
+
+    --color-brand-50: #eef4fc;
+    --color-brand-100: #d4e2f6;
+    --color-brand-200: #a9c5ed;
+    --color-brand-300: #7ea7e3;
+    --color-brand-400: #538ada;
+    --color-brand-500: #2c6cd0;
+    --color-brand-600: #134da3;
+    --color-brand-700: #0f3e83;
+    --color-brand-800: #0b2e62;
+    --color-brand-900: #071f42;
+
+    --color-ink: #000000;
+    --color-paper: #ffffff;
+}
+
+@layer base {
+    html {
+        scroll-behavior: smooth;
+    }
+
+    body {
+        @apply font-sans text-ink bg-paper antialiased;
+    }
+
+    h1, h2, h3, h4, h5, h6 {
+        @apply font-display tracking-tight;
+    }
+}
