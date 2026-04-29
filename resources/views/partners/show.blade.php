@@ -1,6 +1,23 @@
+@php
+    $schemaBuilder = app(\App\Services\SchemaBuilder::class);
+    $crumbs = $schemaBuilder->breadcrumbs([
+        ['Home', url('/')],
+        ['Coliving Partners', url('/coliving-partners')],
+        [$partner->name, route('partner.show', $partner)],
+    ]);
+
+    $schemaHtml = $schemaBuilder->renderAll([
+        $schemaBuilder->lodgingBusiness($partner),
+        $crumbs,
+    ]);
+@endphp
+
 <x-layouts.app
     :title="$partner->name . ' — Coliving Founders'"
     :description="\Illuminate\Support\Str::limit($partner->description, 155)"
+    :canonical="route('partner.show', $partner)"
+    :og-image="$partner->logoUrl('card')"
+    :schema="$schemaHtml"
 >
     <section class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-28">
         <p class="text-sm uppercase tracking-widest text-brand-600 font-semibold">{{ $partner->location }}</p>

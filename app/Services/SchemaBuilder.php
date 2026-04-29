@@ -37,19 +37,21 @@ class SchemaBuilder
     {
         $type = data_get($page->seo, 'schema_type') ?: 'WebPage';
 
-        $factory = match ($type) {
-            'WebSite' => fn () => $this->webSite(),
-            'AboutPage' => fn () => Schema::aboutPage(),
-            'ContactPage' => fn () => Schema::contactPage(),
-            'CollectionPage' => fn () => Schema::collectionPage(),
-            default => fn () => Schema::webPage(),
+        $node = match ($type) {
+            'WebSite' => $this->webSite(),
+            'AboutPage' => Schema::aboutPage(),
+            'ContactPage' => Schema::contactPage(),
+            'CollectionPage' => Schema::collectionPage(),
+            default => Schema::webPage(),
         };
 
-        $node = $factory()
-            ->name($page->seoTitle())
+        $node->name($page->seoTitle())
             ->url($this->canonicalForPage($page))
-            ->inLanguage('en')
-            ->isPartOf($this->webSite());
+            ->inLanguage('en');
+
+        if ($type !== 'WebSite') {
+            $node->isPartOf($this->webSite());
+        }
 
         if ($desc = $page->seoDescription()) {
             $node->description($desc);
